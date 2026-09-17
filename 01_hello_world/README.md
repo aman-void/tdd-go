@@ -53,7 +53,7 @@ Contains tests for the behavior of `Hello()`.
 Defines the Go module:
 
 ```go
-module github.com/aman-void/01_hello_world
+module github.com/aman-void/tdd-go/01_hello_world
 
 go 1.27.1
 ```
