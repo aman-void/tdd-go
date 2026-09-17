@@ -19,9 +19,3 @@ func ExampleRepeat() {
 	fmt.Println(repeated)
 	// Output: *****
 }
-
-func BenchmarkRepeat(b *testing.B) {
-	for b.Loop() {
-		Repeat("*")
-	}
-}
