@@ -1,137 +1,78 @@
-# 02 — Integers
+# 02 — Integers: Docs, Verbs and Testable Examples
 
-Core idea from this chapter: same Red → Green → Refactor loop as `01_hello_world`,
-but applied to `int` return values, doc comments, and **Testable Examples**.
+Okay, strings are done. Now let's play with numbers.
 
-## What I built
+Same TDD rhythm as Chapter 01, but now functions return `int` and `bool`.
+You'll also meet two Go favorites: doc comments and `Example` tests —
+documentation that actually runs, so it can't go stale.
 
-Deviated slightly from the book: instead of one `integers` package,
-each function lives in its own package (one package per directory rule).
+## What you'll learn here
+
+- TDD with `int` / `bool` (verbs `%d`, `%t`)
+- One package per folder rule in Go
+- Doc comments that show up in `go doc`
+- `Example` tests with `// Output:`
+- Edge cases: zero, negatives
+
+## Project tour
+
+Go doesn't allow two packages in one folder, so each tiny function gets its own home:
 
 ```
 02_integers/
-├── go.mod                    # module github.com/aman-void/tdd-go/02_integers
-├── adder/
-│   ├── adder.go              # package adder, func Add(x, y int) int
-│   └── adder_test.go         # TestAdder + ExampleAdd
-├── subtractor/
-│   ├── subtractor.go         # package subtractor, func Subtract(a, b int) int
-│   └── subtractor_test.go    # TestSubtract + ExampleSubtract
-└── is_even/                  # my own extension beyond the book
-    ├── is_even.go            # package iseven, func IsEven(num int) bool
-    └── is_even_test.go       # TestIsEven + 4 Examples
+├── go.mod
+├── adder/adder.go + adder_test.go           # Add(x,y int) int
+├── subtractor/subtractor.go + _test.go      # Subtract(a,b int) int
+└── is_even/is_even.go + _test.go            # IsEven(num int) bool, my extension
 ```
 
-Run everything:
-
-```bash
-go test ./... -v
-```
-
-All 3 packages pass: `TestAdder`, `TestSubtract`, `TestIsEven`, plus all `Example*`.
-
-## TDD cycle, concretely
-
-1. **Red — write failing test first:**
-
-   ```go
-   func TestAdder(t *testing.T) {
-       sum := Add(3, 4)
-       expected := 7
-       if expected != sum {
-           t.Errorf("expected %d but got %d", expected, sum)
-       }
-   }
-   ```
-
-   First failure is a _compile_ failure: `undefined: Add`. That's expected —
-   it proves the test is actually wired up.
-
-2. **Green (fake it) — minimal code to compile:**
-
-   ```go
-   func Add(x, y int) int {
-       return 0
-   }
-   ```
-
-   Now the test fails for the _right_ reason: `expected 7 but got 0`.
-
-   Pedantic TDD step the book calls out: `return 4` / `return 7` would
-   pass one test. That's why you don't stop at one example — the real fix:
-
-   ```go
-   // Add takes two parameters and return their sum
-   func Add(x, y int) int {
-       return x + y
-   }
-   ```
-
-3. **Refactor — here there was almost nothing to refactor.**
-   The improvement was documentation (see below), not logic.
-
-I repeated the same loop for `Subtract(a, b int) int { return a - b }`
-and `IsEven(num int) bool { return num%2 == 0 }`.
-
-## Go notes worth remembering
-
-### 1. One package per directory
-
-Go enforces this. That's why `adder`, `subtractor`, `iseven` are separate
-folders — you can't put `package adder` and `package subtractor` in the same dir.
-
-### 2. Shortened parameter types
-
-When consecutive params share a type, write it once:
+The code — small on purpose:
 
 ```go
-func Add(x, y int) int        // same as (x int, y int)
-func Subtract(a, b int) int
-```
+// adder/adder.go
+package adder
 
-### 3. Format verbs
-
-Strings chapter used `%q` (quoted string). Integers need different verbs:
-
-| Verb | Use                | Example in this repo                                   |
-| ---- | ------------------ | ------------------------------------------------------ |
-| `%d` | integers           | `t.Errorf("expected %d but got %d", expected, sum)`    |
-| `%t` | booleans           | `t.Errorf("expected %t but got %t", expected, isEven)` |
-| `%v` | default / anything | useful fallback                                        |
-
-### 4. Named return values — skipped here on purpose
-
-Chapter 01 used `func Hello(...) (greeting string)`. Here it's just `int`:
-
-```go
-func Add(x, y int) int
-```
-
-Rule of thumb from [CodeReviewComments](https://go.dev/wiki/CodeReviewComments#named-result-parameters):
-use named returns only when the meaning isn't obvious from context.
-`Add` returning `x + y` is obvious, so plain `int` is clearer.
-
-### 5. Doc comments become documentation
-
-```go
 // Add takes two parameters and return their sum
 func Add(x, y int) int {
+    return x + y
+}
 ```
 
-`go doc`, editors, `pkgsite`, and `pkg.go.dev` all surface this.
-Write it as a full sentence starting with the function name.
+```go
+// subtractor/subtractor.go
+package subtractor
 
-Missing here (improvement for later): `Subtract` and `IsEven` deserve the
-same treatment — e.g. `// IsEven reports whether num is even.`
-
-## Testable Examples — the big new idea
-
-Examples live in `_test.go` files, start with `Example`, compile on every
-`go test` run, and show up in docs. They prevent README-style docs from rotting.
-
-Basic form (`adder/adder_test.go`):
+// Subtract function takes two parameters and return the subtract
+func Subtract(a, b int) int {
+    return a - b
+}
+```
 
 ```go
+// is_even/is_even.go
+package iseven
+
+func IsEven(num int) bool {
+    if num%2 == 0 {
+        return true
+    } else {
+        return false
+    }
+}
+```
+
+Tests + living docs:
+
+```go
+// adder/adder_test.go
+func TestAdder(t *testing.T) {
+    sum := Add(3, 4)
+    expected := 7
+    if expected != sum {
+        t.Errorf("expected %d but got %d", expected, sum)
+    }
+}
+
 func ExampleAdd() {
     sum := Add(3, 4)
     fmt.Println(sum)
@@ -139,45 +80,64 @@ func ExampleAdd() {
 }
 ```
 
-Key rules:
-
-- Must `import "fmt"` (rely on `goimports` / editor auto-import).
-- The trailing `// Output: 7` comment is what turns it from
-  "compile-only" into "compile + run + assert".
-  Remove it → `go test -v` won't execute the Example anymore.
-- `go test -v` shows them explicitly:
-  `=== RUN ExampleAdd --- PASS: ExampleAdd`.
-
-Multiple examples for one function need a suffix (`is_even/is_even_test.go`):
+`is_even` goes further — 4 examples for one function:
 
 ```go
-func ExampleIsEven_odd()     // IsEven(7)  → false
-func ExampleIsEven_even()    // IsEven(8)  → true
-func ExampleIsEven_zero()    // IsEven(0)  → true (0 % 2 == 0)
-func ExampleIsEven_negative() // IsEven(-2) → true (Go % keeps sign of dividend, -2%2==0)
+func ExampleIsEven_odd() {
+    fmt.Println(IsEven(7))
+    // Output: false
+}
+
+func ExampleIsEven_even() {
+    fmt.Println(IsEven(8))
+    // Output: true
+}
+
+func ExampleIsEven_zero() {
+    fmt.Println(IsEven(0))
+    // Output: true
+}
+
+func ExampleIsEven_negative() {
+    fmt.Println(IsEven(-2))
+    // Output: true
+}
 ```
 
-This is the idiomatic way to document edge cases: zero and negatives,
-not just the happy path. Note the `if/else` in `IsEven` can simplify to
-`return num%2 == 0` — good refactor candidate.
+## How we built it
 
-View them rendered with:
+Same story: `undefined: Add` (Red) -> `return 0` (fake Green, fails with `expected 7 got 0`) ->
+`return x + y` (real Green). Repeated for `Subtract` and `IsEven`.
+
+Friendly warning from the book: if you return a hard-coded `7`, one test passes.
+That's why you need more examples. TDD only forces general code if your tests demand it.
+
+## Go bits worth remembering
+
+- `func Add(x, y int)` is shorthand for `(x int, y int)`. Use it when types match.
+- Format verbs cheat: `%d` ints, `%t` bools, `%q` strings, `%v` anything.
+- Doc comment must start with the name: `// Add takes...`. It powers `go doc` and pkg.go.dev.
+- `IsEven` can slim down to `return num%2 == 0` — good first refactor to try.
+- Fun facts: `0` is even, and Go's `%` keeps the dividend sign so `-2 % 2 == 0`.
+
+## Testing bits worth remembering
+
+- `Example` must be in a `_test.go` file, start with `Example`, and `import "fmt"`.
+- The magic line is `// Output: 7`. With it, `go test` runs and checks it.
+  Without it, it only checks that it compiles.
+- Suffix pattern `ExampleIsEven_odd` lets you document happy path + edges in one place.
+  Future-you will thank you for that zero/negative coverage.
+
+## Run it yourself
 
 ```bash
-go install golang.org/x/pkgsite/cmd/pkgsite@latest
-pkgsite -open .
-# → your package → func Add → Example
+go test ./... -v
+# you'll see TestAdder, TestSubtract, TestIsEven + all Example* passing
 ```
 
-Or publish and read on `pkg.go.dev`.
+No benchmarks here yet — Chapter 03 is where we measure speed.
 
-## Takeaways
+## Takeaway in one line
 
-- TDD with ints is identical to TDD with strings — only the verbs (`%d`, `%t`) change.
-- A compile error (`undefined: Add`) counts as Red. Then fake Green (`return 0`),
-  then real Green (`return x + y`).
-- One hard-coded return value passing is a TDD smell; more examples (or
-  property-based testing, previewed in the book) force the general solution.
-- `ExampleX` + `// Output:` gives you tested documentation for free.
-  Use `_suffix` for multiple examples per function.
-- Keep doc comments on every exported function; keep packages tiny and focused.
+> Same TDD loop, new types. Write doc comments, cover edges with `Example_suffix`,
+> and let `// Output:` keep your docs honest.

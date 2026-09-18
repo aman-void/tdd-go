@@ -1,626 +1,159 @@
-# 01 — Hello World
+# 01 — Hello, World: Learn TDD the Friendly Way
 
-This exercise is based on the **Hello World** chapter from _Learn Go with Tests_.
+Hey, welcome to the start of the journey.
 
-The goal is not just to print `"Hello, World"`, but to learn the fundamentals of Go through a small example and introduce **Test-Driven Development (TDD)**.
+This chapter isn't really about printing "Hello, World".
+It's about learning the rhythm you'll use for the whole repo:
 
----
+**Red -> Green -> Refactor.**
 
-## What This Exercise Covers
+We build a tiny `Hello()` function that greets people in 3 languages.
+Small enough to finish in one sitting, big enough to meet packages,
+`if`, `switch`, constants, and real tests.
 
-- Go modules
-- Packages
-- Functions
-- Parameters and return values
-- Constants
-- `if` statements
-- `switch` statements
-- Named return values
-- Exported and unexported functions
-- Table-like test organization with subtests
-- Test helpers
-- `testing.T`
-- `t.Run()`
-- `t.Helper()`
-- Basic TDD workflow
-- Separating logic from side effects
+> Based on [Learn Go with Tests — Hello World](https://quii.gitbook.io/learn-go-with-tests/go-fundamentals/hello-world)
 
----
+## What you'll learn here
 
-## Project Structure
+- How TDD actually feels in real life
+- Go modules, packages, functions
+- `if`, `switch`, constants, named returns
+- Exported vs unexported (capital vs small letter)
+- Subtests with `t.Run`, helpers with `t.Helper`
 
-```text
+## Project tour
+
+```
 01_hello_world/
-├── go.mod
-├── hello.go
-└── hello_test.go
+├── go.mod        # module github.com/aman-void/tdd-go/01_hello_world
+├── hello.go      # Hello(), greetingPrefix(), main()
+└── hello_test.go # TestHello + helper
 ```
 
-### `hello.go`
-
-Contains the application code:
-
-- `Hello()` is the main function being tested.
-- `greetingPrefix()` determines which greeting prefix to use.
-- `main()` demonstrates the function.
-
-### `hello_test.go`
-
-Contains tests for the behavior of `Hello()`.
-
-### `go.mod`
-
-Defines the Go module:
+`hello.go` — the whole app:
 
 ```go
-module github.com/aman-void/tdd-go/01_hello_world
+package main
 
-go 1.27.1
-```
+import "fmt"
 
-The `go` directive specifies the Go language/toolchain version the module is intended to use.
-
----
-
-# `Hello()` Function
-
-```go
-func Hello(name, language string) string {
-	if name == "" {
-		name = "World"
-	}
-
-	return greetingPrefix(language) + name
-}
-```
-
-The function accepts two strings:
-
-```text
-name
-language
-```
-
-and returns a string.
-
-Examples:
-
-```go
-Hello("", "")
-// Hello, World
-
-Hello("Rob Pike", "Spanish")
-// Hola, Rob Pike
-
-Hello("Robert Griesemer", "French")
-// Bonjour, Robert Griesemer
-```
-
-### Default name
-
-If the caller supplies an empty name:
-
-```go
-if name == "" {
-	name = "World"
-}
-```
-
-the function uses `"World"` as the default.
-
-This keeps the behavior inside `Hello()` instead of forcing every caller to handle the default themselves.
-
----
-
-# Constants
-
-The greetings and language names are defined as constants:
-
-```go
 const (
-	spanish = "Spanish"
-	french  = "French"
+    spanish = "Spanish"
+    french  = "French"
 
-	englishHelloPrefix = "Hello, "
-	spanishHelloPrefix = "Hola, "
-	frenchHelloPrefix  = "Bonjour, "
+    englishHelloPrefix = "Hello, "
+    spanishHelloPrefix = "Hola, "
+    frenchHelloPrefix  = "Bonjour, "
 )
-```
 
-Constants are useful here because these values do not change during program execution.
+func Hello(name, language string) string {
+    if name == "" {
+        name = "World"
+    }
+    return greetingPrefix(language) + name
+}
 
-They also avoid scattering **magic strings** throughout the code.
-
-For example:
-
-```go
-case french:
-```
-
-is clearer than:
-
-```go
-case "French":
-```
-
-when the same value has semantic meaning throughout the program.
-
----
-
-# `greetingPrefix()`
-
-```go
 func greetingPrefix(language string) (prefix string) {
-	switch language {
-	case french:
-		prefix = frenchHelloPrefix
-	case spanish:
-		prefix = spanishHelloPrefix
-	default:
-		prefix = englishHelloPrefix
-	}
+    switch language {
+    case french:
+        prefix = frenchHelloPrefix
+    case spanish:
+        prefix = spanishHelloPrefix
+    default:
+        prefix = englishHelloPrefix
+    }
+    return
+}
 
-	return
+func main() {
+    fmt.Println(Hello("", ""))
+    fmt.Println(Hello("Rob Pike", spanish))
+    fmt.Println(Hello("Robert Griesemer", french))
+    fmt.Println(Hello("Ken Thompson", ""))
 }
 ```
 
-This function is responsible only for determining the greeting prefix.
-
-The logic is:
-
-```text
-French  → Bonjour,
-Spanish → Hola,
-Other   → Hello,
-```
-
-This is a useful example of **separation of responsibilities**.
-
-`Hello()` handles the overall greeting while `greetingPrefix()` handles language selection.
-
----
-
-## Named Return Values
-
-This function uses a named return value:
+`hello_test.go` — 4 behaviors, one test function:
 
 ```go
-func greetingPrefix(language string) (prefix string)
-```
+func TestHello(t *testing.T) {
+    t.Run("saying hello to people", func(t *testing.T) {
+        got := Hello("Ken Thompson!", "")
+        want := "Hello, Ken Thompson!"
+        assertCorrectMessage(t, got, want)
+    })
 
-The return variable is named `prefix`.
+    t.Run("saying 'Hello, World' when empty string is supplied", func(t *testing.T) {
+        got := Hello("", "")
+        want := "Hello, World"
+        assertCorrectMessage(t, got, want)
+    })
 
-Therefore, this:
+    t.Run("in Spanish", func(t *testing.T) {
+        got := Hello("Rob Pike", "Spanish")
+        want := "Hola, Rob Pike"
+        assertCorrectMessage(t, got, want)
+    })
 
-```go
-return
-```
+    t.Run("in French", func(t *testing.T) {
+        got := Hello("Robert Griesemer", "French")
+        want := "Bonjour, Robert Griesemer"
+        assertCorrectMessage(t, got, want)
+    })
+}
 
-returns the current value of `prefix`.
-
-For example:
-
-```go
-prefix = frenchHelloPrefix
-
-return
-```
-
-is equivalent in effect to:
-
-```go
-return frenchHelloPrefix
-```
-
-### Important
-
-Named returns are a Go feature, but they should not automatically be used everywhere.
-
-For short functions they can sometimes improve readability, but unnecessary named returns can make code harder to follow because the returned value is no longer visible at the `return` statement.
-
----
-
-# `switch`
-
-The language selection uses a `switch`:
-
-```go
-switch language {
-case french:
-	prefix = frenchHelloPrefix
-case spanish:
-	prefix = spanishHelloPrefix
-default:
-	prefix = englishHelloPrefix
+func assertCorrectMessage(t *testing.T, got, want string) {
+    t.Helper()
+    if got != want {
+        t.Errorf("got %q want %q", got, want)
+    }
 }
 ```
 
-This is clearer than repeatedly checking:
-
-```go
-if language == french {
-	...
-} else if language == spanish {
-	...
-}
-```
-
-The `default` case provides the English greeting for any unsupported or empty language.
-
----
-
-# Exported vs Unexported Functions
-
-The function:
-
-```go
-func Hello(...)
-```
-
-starts with an uppercase letter.
-
-Therefore, it is **exported**.
-
-The function:
-
-```go
-func greetingPrefix(...)
-```
-
-starts with a lowercase letter.
-
-Therefore, it is **unexported**.
-
-Go uses capitalization to control visibility between packages:
-
-```text
-Hello         → exported
-greetingPrefix → unexported
-```
-
-`Hello()` is the public behavior of this package, while `greetingPrefix()` is an implementation detail.
-
----
-
-# Testing
-
-The project uses Go's standard `testing` package:
-
-```go
-import "testing"
-```
-
-No third-party testing framework is required.
-
-Run the tests with:
-
-```bash
-go test
-```
-
-For more detailed output:
-
-```bash
-go test -v
-```
-
----
-
-# Subtests
-
-The test uses `t.Run()`:
-
-```go
-t.Run("saying hello to people", func(t *testing.T) {
-	// test
-})
-```
-
-This allows several related scenarios to exist under the same `TestHello` function.
-
-The current test cases cover:
-
-```text
-Normal greeting
-Empty name
-Spanish greeting
-French greeting
-```
-
-This makes the test output descriptive and makes it easier to identify which behavior failed.
-
----
-
-# Test Helper
-
-Repeated assertion logic is extracted into:
-
-```go
-func assertCorrectMessage(t testing.TB, got, want string) {
-	t.Helper()
-
-	if got != want {
-		t.Errorf("got %q want %q", got, want)
-	}
-}
-```
-
-Instead of repeating:
-
-```go
-if got != want {
-	t.Errorf("got %q want %q", got, want)
-}
-```
-
-in every subtest, the tests call:
-
-```go
-assertCorrectMessage(t, got, want)
-```
-
----
-
-## `testing.TB`
-
-The helper accepts:
-
-```go
-testing.TB
-```
-
-rather than:
-
-```go
-*testing.T
-```
-
-`testing.TB` is an interface implemented by Go's testing and benchmarking types.
-
-This makes the helper usable in both tests and benchmarks.
-
-For this exercise, the important idea is simply:
-
-> `testing.TB` allows a test helper to work with multiple testing types.
-
----
-
-## `t.Helper()`
-
-Inside the helper:
-
-```go
-t.Helper()
-```
-
-tells Go that this function is a test helper.
-
-When the assertion fails, Go can report the failure at the caller's location rather than making the helper implementation look like the source of the failure.
-
-This becomes particularly useful when you have many reusable test helpers.
-
----
-
-# `%q` in Test Errors
-
-The assertion uses:
-
-```go
-t.Errorf("got %q want %q", got, want)
-```
-
-`%q` formats strings with quotation marks.
-
-For example:
-
-```text
-got "Hello, Bob" want "Hello, Alice"
-```
-
-This makes invisible or confusing characters easier to notice.
-
-For example, a whitespace difference becomes much easier to spot:
-
-```text
-got "Hello, Bob " want "Hello, Bob"
-```
-
----
-
-# Why `Hello()` Returns a String
-
-The `Hello()` function does not print anything.
-
-It returns the greeting:
-
-```go
-return greetingPrefix(language) + name
-```
-
-The actual printing happens in `main()`:
-
-```go
-fmt.Println(Hello("", ""))
-```
-
-This separation is important.
-
-### Logic
-
-```go
-Hello("Rob Pike", "Spanish")
-```
-
-produces:
-
-```text
-Hola, Rob Pike
-```
-
-### Side effect
-
-```go
-fmt.Println(...)
-```
-
-prints that value to the terminal.
-
-Keeping these separate makes the logic easy to test without having to capture terminal output.
-
----
-
-# TDD Discipline
-
-The development process used in this exercise follows:
-
-```text
-1. Write a test
-2. Make the compiler pass
-3. Run the test
-4. Confirm that it fails
-5. Check that the failure message is meaningful
-6. Write enough code to make the test pass
-7. Refactor
-```
-
-This is commonly summarized as:
-
-```text
-Red → Green → Refactor
-```
-
-### Red
-
-Write a test for behavior that does not exist yet.
-
-The test should fail.
-
-### Green
-
-Implement the smallest amount of code necessary to make the test pass.
-
-### Refactor
-
-Improve the implementation while keeping the tests passing.
-
-The important idea is that **the tests drive the design**, rather than being something added after the implementation is finished.
-
----
-
-# Current Behavior
-
-| Input                            | Output                      |
-| -------------------------------- | --------------------------- |
-| `("", "")`                       | `Hello, World`              |
-| `("Ken Thompson!", "")`          | `Hello, Ken Thompson!`      |
-| `("Rob Pike", "Spanish")`        | `Hola, Rob Pike`            |
-| `("Robert Griesemer", "French")` | `Bonjour, Robert Griesemer` |
-| `("Any Name", "Unknown")`        | `Hello, Any Name`           |
-
-Unsupported languages fall back to English.
-
----
-
-# Running the Exercise
-
-From this directory:
+## How we built it (the TDD story)
+
+Think of TDD like this: test first, then just enough code, then tidy up.
+
+1. **Red:** Wrote `TestHello` before `Hello` existed. Compiler shouted `undefined: Hello`.
+   That's good — it means your test is actually connected.
+2. **Green:** Returned `""` just to compile, then added the real `if` + `switch` logic.
+3. **Refactor:** Pulled out `greetingPrefix()`, added constants, added the helper.
+   Tests stayed green the whole time.
+
+That loop is everything: write test, see it fail nicely, make it pass, clean up.
+
+## Go bits worth remembering
+
+- `Hello` returns a string, it doesn't print. `main()` does the printing.
+  This separation is why testing is easy — no need to capture terminal output.
+- `if name == "" { name = "World" }` — friendly default lives inside the function,
+  callers don't have to remember it.
+- `const` avoids magic strings. `case french:` is clearer than `case "French":`.
+- `switch` beats long `if-else` chains here. `default:` falls back to English.
+- `(prefix string)` + bare `return` is a named return. Cute for short funcs,
+  but plain `return prefix` is often easier to read. Don't overuse it.
+- Capital `Hello` = public to other packages. Small `greetingPrefix` = private detail.
+
+## Testing bits worth remembering
+
+- No framework needed, just `import "testing"`. File must end in `_test.go`.
+- `t.Run("in Spanish", ...)` gives you named subtests. When one fails,
+  you know exactly which language broke.
+- `assertCorrectMessage` + `t.Helper()` keeps failure messages pointing
+  at the right line, not inside the helper.
+- `%q` shows strings with quotes: `got "Hello, Bob " want "Hello, Bob"` —
+  that trailing space is suddenly obvious.
+
+## Run it yourself
 
 ```bash
 go run .
-```
-
-Run tests:
-
-```bash
-go test
-```
-
-Run tests with verbose output:
-
-```bash
 go test -v
 ```
 
-Run all tests recursively from the repository root:
+No benchmarks in this chapter — we meet those properly in `03_iteration`.
 
-```bash
-go test ./...
-```
+## Takeaway in one line
 
----
-
-# Key Takeaways
-
-### Go fundamentals
-
-- `package main` creates an executable package.
-- `main()` is the executable entry point.
-- Functions can accept multiple parameters.
-- Functions can return values.
-- Constants are declared with `const`.
-- `switch` is useful for selecting between multiple cases.
-- Uppercase identifiers are exported.
-- Lowercase identifiers are unexported.
-
-### Testing
-
-- Go has a built-in testing framework.
-- Test files use the `_test.go` suffix.
-- Test functions start with `Test`.
-- `t.Run()` creates subtests.
-- `t.Helper()` marks reusable test helpers.
-- `testing.TB` can make helpers reusable across tests and benchmarks.
-- `go test` runs the tests.
-
-### Design
-
-The exercise demonstrates an important design principle:
-
-```text
-Pure logic
-    ↓
-Hello()
-    ↓
-String result
-    ↓
-Side effect
-    ↓
-fmt.Println()
-```
-
-The function produces a value, while `main()` decides what to do with that value.
-
-That makes the core behavior easier to test, reuse, and change.
-
----
-
-# Commands Cheat Sheet
-
-```bash
-# Run the program
-go run .
-
-# Run tests
-go test
-
-# Run tests with verbose output
-go test -v
-
-# Run all tests in the module
-go test ./...
-
-# Format Go files
-gofmt -w .
-
-# Inspect module dependencies
-go list -m all
-
-# Verify module dependencies
-go mod verify
-```
-
----
-
-## Reference
-
-- [Learn Go with Tests — Hello World](https://quii.gitbook.io/learn-go-with-tests/go-fundamentals/hello-world)
+> Tests drive the design. `Hello()` makes a value, `main()` prints it,
+> and `t.Run` + helper keep the tests readable as behaviors grow.

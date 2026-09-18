@@ -1,175 +1,36 @@
-# 03 — Iteration
+# 03 — Iteration: Loops, Table Tests and Benchmarks
 
-Core idea from this chapter: same Red → Green → Refactor loop as `01_hello_world` and `02_integers`,
-but applied to repeated work with `for` — the *only* looping construct in Go — plus **Benchmarks** and **Testable Examples**.
+Now things get fun. We repeat work with `for` — the *only* loop in Go —
+then level up our testing with table-driven tests and benchmarks.
 
-Based on [Learn Go with Tests — Iteration](https://github.com/quii/learn-go-with-tests/tree/main/for).
+If Chapter 01 was "how to test" and 02 was "how to document",
+this one is "how to test smarter and measure faster".
 
-## What I built
+> Based on [Learn Go with Tests — Iteration](https://github.com/quii/learn-go-with-tests/tree/main/for)
 
-Single `iteration` package (one package per directory rule, same as before):
+## What you'll learn here
+
+- `for` is all you get (no `while`)
+- `const`, `var` vs `:=`, why `+=` in loops can hurt
+- `strings.Builder` and `strings.Repeat`
+- Table-driven tests with `t.Run`
+- Benchmarks with `b.Loop()` and `-benchmem`
+
+## Project tour
 
 ```
 03_iteration/
-├── go.mod                         # module github.com/aman-void/tdd-go/03_iteration
-├── iteration.go                   # package iteration, func Repeat(character string) string
-├── iteration_test.go              # TestRepeat + ExampleRepeat (my example)
-├── iteration_benchmark_test.go    # BenchmarkRepeat + 4 extra benchmarks (my examples)
-└── README.md                      # this file
+├── go.mod
+├── iteration.go                # Repeat() + CompareStrings()
+├── iteration_test.go           # TestRepeat + ExampleRepeat + TestCompareStrings
+├── iteration_benchmark_test.go # BenchmarkRepeat + 4 intuition builders + BenchmarkCompareStrings
+└── README.md
 ```
 
-Run everything:
-
-```bash
-go test ./... -v
-go test -bench=. -benchmem
-```
-
-All pass on my machine:
-
-```
-=== RUN   TestRepeat
---- PASS: TestRepeat
-=== RUN   ExampleRepeat
---- PASS: ExampleRepeat
-```
-
-```text
-BenchmarkRepeat-4                 25870501    51.24 ns/op    8 B/op    1 allocs/op
-BenchmarkStringConcatenation-4     2374438   509.8  ns/op  128 B/op    9 allocs/op
-BenchmarkStringBuilder-4          10853826   114.0  ns/op   24 B/op    2 allocs/op
-BenchmarkJSONEncoding-4            2506603   471.4  ns/op   48 B/op    2 allocs/op
-BenchmarkMapLookup-4              98561480    12.42 ns/op    0 B/op    0 allocs/op
-```
-
-## TDD cycle, concretely
-
-1. **Red — write failing test first** (`iteration_test.go` — my example):
-
-   ```go
-   func TestRepeat(t *testing.T) {
-       repeated := Repeat("a")
-       expected := "aaaaa"
-
-       if expected != repeated {
-           t.Errorf("expected %q but got %q", expected, repeated)
-       }
-   }
-   ```
-
-   First failure is a *compile* failure: `undefined: Repeat`. That's expected —
-   it proves the test is actually wired up.
-
-2. **Green (fake it) — minimal code to compile** (`iteration.go`):
-
-   ```go
-   package iteration
-
-   func Repeat(character string) string {
-       return ""
-   }
-   ```
-
-   Now the test fails for the *right* reason: `expected 'aaaaa' but got ''`.
-
-   Then the real fix — `for` follows most C-like languages, except no
-   parentheses and braces `{ }` are always required:
-
-   ```go
-   func Repeat(character string) string {
-       var repeated string
-       for i := 0; i < 5; i++ {
-           repeated = repeated + character
-       }
-       return repeated
-   }
-   ```
-
-3. **Refactor — introduce `const` + `+=`**:
-
-   ```go
-   const repeatCount = 5
-
-   func Repeat(character string) string {
-       var repeated string
-       for i := 0; i < repeatCount; i++ {
-           repeated += character
-       }
-       return repeated
-   }
-   ```
-
-   `+=` is the *Add AND assignment operator*: adds the right operand to the
-   left and assigns the result back. Works for strings and integers.
-
-## Go notes worth remembering
-
-### 1. `for` is the only loop
-
-No `while`, `do`, `until` keywords in Go — only `for`:
+Core code:
 
 ```go
-for i := 0; i < repeatCount; i++ {
-    repeated += character
-}
-```
-
-Other variants from [Go by Example](https://gobyexample.com/for):
-
-```go
-for i < 10 { }        // while-style
-for { }               // infinite
-for i, v := range s { } // over slice/map/string
-```
-
-### 2. `var x string` vs `x := ...`
-
-So far we used `:=` (declare + initialize shorthand). Here we declare only:
-
-```go
-var repeated string // zero value "" — then fill it in the loop
-```
-
-`:=` is shorthand for both steps. Explicit `var` makes the
-"start empty, accumulate" intent clear.
-
-### 3. `const repeatCount = 5`
-
-Magic numbers scattered in loops rot. Naming it:
-
-- documents intent,
-- gives one place to change repetition count,
-- matches the practice exercise: let the caller pass the count in.
-
-### 4. Strings are immutable — why `+=` in a loop can hurt
-
-Every `repeated += character` can allocate a new backing array and copy.
-For 5 iterations it's insignificant; for large loops it gets expensive.
-
-Standard library fix: `strings.Builder` — keeps an internal buffer,
-`WriteString` appends without repeated copying, `String()` returns the result:
-
-```go
-import "strings"
-
-const repeatCount = 5
-
-func Repeat(character string) string {
-    var repeated strings.Builder
-    for i := 0; i < repeatCount; i++ {
-        repeated.WriteString(character)
-    }
-    return repeated.String()
-}
-```
-
-### 5. My final version — `strings.Repeat` (my example)
-
-Since the operation is literally "repeat this string N times", the stdlib
-already has the idiomatic solution. No manual loop / Builder needed
-(`iteration.go` in this repo):
-
-```go
+// iteration.go
 package iteration
 
 import "strings"
@@ -177,59 +38,23 @@ import "strings"
 const repeatCount = 5
 
 func Repeat(character string) string {
-    // A simple approach would be to concatenate strings using +=:
-    //
-    // var repeated string
-    // for i := 0; i < repeatCount; i++ {
-    //     repeated += character
-    // }
-    //
-    // However, strings in Go are immutable. Repeatedly using += in a loop
-    // can cause multiple allocations and copies as the string grows.
-    //
-    // For a small number of iterations this is usually insignificant,
-    // but for larger loops it can become unnecessarily expensive.
-
-    // strings.Builder is designed for efficiently constructing strings:
-    //
-    // var repeated strings.Builder
-    // for i := 0; i < repeatCount; i++ {
-    //     repeated.WriteString(character)
-    // }
-    //
-    // return repeated.String()
-    //
-    // The Builder maintains an internal buffer, avoiding the repeated
-    // allocation and copying that can happen with string concatenation.
-
-    // Since our actual operation is simply "repeat this string N times",
-    // the standard library already provides the most idiomatic solution.
-    //
-    // strings.Repeat handles the allocation and construction internally,
-    // so there is no need to manually manage a Builder or a loop here.
     return strings.Repeat(character, repeatCount)
 }
+
+func CompareStrings(str1, str2 string) int {
+    return strings.Compare(str1, str2)
+}
 ```
 
-The comments preserve the whole journey: `+=` → `Builder` → `strings.Repeat`.
-That history is the note itself.
+> Inside the real file I kept the journey in comments: `+=` loop ->
+> `strings.Builder` -> `strings.Repeat`. Open `iteration.go` to see why each step mattered.
 
-## Testable Examples — my example
-
-`iteration_test.go` in this repo (beyond the book's test):
+Tests — classic + table:
 
 ```go
-package iteration
-
-import (
-    "fmt"
-    "testing"
-)
-
 func TestRepeat(t *testing.T) {
     repeated := Repeat("a")
     expected := "aaaaa"
-
     if expected != repeated {
         t.Errorf("expected %q but got %q", expected, repeated)
     }
@@ -240,25 +65,75 @@ func ExampleRepeat() {
     fmt.Println(repeated)
     // Output: *****
 }
+
+// Table-driven: one logic, many rows
+func TestCompareStrings(t *testing.T) {
+    tests := []struct {
+        name     string
+        str1     string
+        str2     string
+        expected int
+    }{
+        {name: "equal strings", str1: "hi", str2: "hi", expected: 0},
+        {name: "first string is smaller", str1: "apple", str2: "watermelon", expected: -1},
+        {name: "first string is greater", str1: "california", str2: "boston", expected: 1},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := CompareStrings(tt.str1, tt.str2)
+            if result != tt.expected {
+                t.Errorf("CompareStrings(%q, %q) = %d and expected %d",
+                    tt.str1, tt.str2, result, tt.expected)
+            }
+        })
+    }
+}
 ```
 
-Key rules (same as `02_integers`):
+What you'll see:
 
-- File ends in `_test.go`, function starts with `Example`.
-- Must `import "fmt"`.
-- Trailing `// Output: *****` turns it from "compile-only" into
-  "compile + run + assert". Remove it → `go test -v` won't execute it.
-- `go test -v` shows it: `=== RUN ExampleRepeat --- PASS: ExampleRepeat`.
-- Appears in `go doc` / `pkgsite` / `pkg.go.dev` as tested documentation.
+```
+=== RUN   TestRepeat
+=== RUN   TestCompareStrings/equal_strings
+=== RUN   TestCompareStrings/first_string_is_smaller
+=== RUN   TestCompareStrings/first_string_is_greater
+=== RUN   ExampleRepeat
+--- PASS
+```
 
-Practice extension from the book I should still do: `Write ExampleRepeat`
-is done; remaining are *caller-specified count* (`Repeat(s string, n int)`)
-and exploring `strings` package with tests.
+## How we built it
 
-## Benchmarking — my examples
+`Repeat`: Red `undefined: Repeat` -> fake `return ""` -> real `for` + `+=` ->
+refactor with `const`, then `Builder`, then `strings.Repeat` (the idiomatic finish).
 
-Benchmarks are first-class in Go, structured like tests but with `*testing.B`
-(`iteration_benchmark_test.go` in this repo):
+`CompareStrings`: built to teach table tests. `strings.Compare` returns
+`-1` if first < second, `0` if equal, `+1` if greater — perfect for a 3-row table.
+
+## Go bits worth remembering
+
+- No `while` in Go. Just `for`: `for i:=0;i<5;i++{}`, `for cond{}`, `for{}`,
+  `for i,v := range s{}`. Braces always, parens never.
+- `var repeated string` starts as `""`, then you fill it. `:=` is declare+init shorthand.
+- `const repeatCount = 5` kills magic numbers. Next natural step:
+  let the caller decide — `Repeat(s string, n int)`.
+- Strings are immutable. `+=` in a big loop copies a lot. `strings.Builder`
+  buffers instead, and `strings.Repeat` is best when you literally just repeat.
+
+## Testing bits: table tests in plain English
+
+Think of it like a spreadsheet:
+
+1. `tests := []struct{...}` — your rows.
+2. `for _, tt := range tests` — `tt` is convention for "this row".
+3. `t.Run(tt.name, ...)` — each row becomes a named subtest, so failures tell you
+   *which* row broke, not just "something broke".
+
+Adding a new case? Just add one line to the table. No new logic needed.
+
+## Benchmarks — let's measure, not guess
+
+Benchmarks look like tests but take `*testing.B`:
 
 ```go
 func BenchmarkRepeat(b *testing.B) {
@@ -266,117 +141,50 @@ func BenchmarkRepeat(b *testing.B) {
         Repeat("*")
     }
 }
-```
 
-- `b.Loop()` returns true while the benchmark should keep running.
-  Only the loop body is timed; setup/cleanup outside is excluded.
-- Framework picks iteration count (`b.N`) to get stable numbers.
-- Run with `go test -bench=.` (Powershell: `go test -bench="."`).
-- Add `-benchmem` for allocation stats: `B/op` (bytes per op),
-  `allocs/op` (allocations per op).
-
-### My extra benchmarks beyond the book
-
-I added 4 more to build intuition for what is cheap vs expensive:
-
-```go
-func BenchmarkStringConcatenation(b *testing.B) {
+func BenchmarkCompareStrings(b *testing.B) {
     for b.Loop() {
-        var result string
-
-        for i := 0; i < 10; i++ {
-            result += "[]"
-        }
-    }
-}
-
-func BenchmarkStringBuilder(b *testing.B) {
-    for b.Loop() {
-        var builder strings.Builder
-
-        for i := 0; i < 10; i++ {
-            builder.WriteString("&")
-        }
-        // builder.String()
-    }
-}
-
-type MyStruct struct {
-    Name string
-    Age  int
-}
-
-func BenchmarkJSONEncoding(b *testing.B) {
-    data := MyStruct{
-        Name: "Void",
-        Age:  20,
-    }
-
-    for b.Loop() {
-        json.Marshal(data)
-    }
-}
-
-func BenchmarkMapLookup(b *testing.B) {
-    data := map[string]int{
-        "foo": 42,
-    }
-
-    for b.Loop() {
-        _ = data["foo"]
+        CompareStrings("Hi", "Hi")
+        CompareStrings("peach", "watermelon")
+        CompareStrings("pomogranate", "grapes")
     }
 }
 ```
 
-What they teach (`go test -bench=. -benchmem`):
+Plus 4 extra I added to build intuition: `+=` vs `Builder` vs `json.Marshal` vs map lookup.
 
-| Benchmark | ns/op | B/op | allocs/op | Lesson |
-| --------- | ----- | ---- | --------- | ------ |
-| `BenchmarkRepeat` (`strings.Repeat`) | ~51 | 8 | 1 | 1 alloc total — stdlib pre-sizes correctly |
-| `BenchmarkStringConcatenation` (`+=` ×10) | ~510 | 128 | 9 | ~10× slower, 9 allocs — immutable-string copying |
-| `BenchmarkStringBuilder` (`WriteString` ×10) | ~114 | 24 | 2 | ~4.5× faster than `+=`, far fewer allocs |
-| `BenchmarkJSONEncoding` | ~471 | 48 | 2 | reflection + encoding dominates; avoid in hot loops |
-| `BenchmarkMapLookup` | ~12 | 0 | 0 | map read is ~40× cheaper than JSON encode here |
-
-Note: `BenchmarkStringBuilder` above comments out `builder.String()` —
-calling it adds one alloc + copy. Uncomment to measure the full cost.
-
-## Takeaways
-
-- TDD with loops is identical — Red (`undefined: Repeat`), fake Green
-  (`return ""`), real Green (`for` + `+=`), Refactor (`const`, `Builder`, `strings.Repeat`).
-- `for` is Go's only loop; no parens, braces always required.
-- `var s string` declares the zero value `""`; `:=` is declare + init shorthand.
-- `const repeatCount` removes the magic number; next step is making it a parameter.
-- Strings are immutable: `+=` in a loop copies; `strings.Builder` buffers;
-  `strings.Repeat` is idiomatic when you just need repetition.
-- `ExampleRepeat` + `// Output: *****` gives tested docs for free.
-- `BenchmarkX(b *testing.B)` + `for b.Loop()` + `go test -bench=. -benchmem`
-  quantifies `ns/op`, `B/op`, `allocs/op` — my 4 extra benchmarks make the
-  cost of `+=` vs `Builder` vs `encoding/json` vs map lookup concrete.
-
-## Commands Cheat Sheet
+Run them:
 
 ```bash
-# Run tests in this package
-go test -v
-
-# Run all tests from repo root
-go test ./... -v
-
-# Run benchmarks (current package)
-go test -bench=.
 go test -bench=. -benchmem
+go test -bench=Repeat -benchmem -run=^$  # just one
+```
 
-# Run one benchmark
-go test -bench=Repeat -benchmem -run=^$
+How to read the output:
 
-# Format
+| Benchmark | What it tells you |
+|---|---|
+| `BenchmarkRepeat ~51 ns/op, 1 alloc` | `strings.Repeat` pre-sizes — 1 alloc total, fast |
+| `StringConcatenation ~510 ns/op, 9 allocs` | `+=` x10 copies every time, ~10x slower |
+| `StringBuilder ~114 ns/op, 2 allocs` | Buffering wins, ~4.5x faster than `+=` |
+| `JSONEncoding ~471 ns/op` | Reflection + encoding is heavy, avoid in hot loops |
+| `MapLookup ~12 ns/op, 0 allocs` | Map read is ~40x cheaper than JSON here |
+
+> Tip: `b.Loop()` keeps the hot part timed and leaves setup outside.
+> `-benchmem` adds `B/op` and `allocs/op` so you see memory, not just speed.
+
+## Run it yourself
+
+```bash
+go test -v
+go test -v -run TestCompareStrings
+go test -bench=. -benchmem
 gofmt -w .
 ```
 
-## Reference
+## Takeaway in one line
 
-- [Learn Go with Tests — Iteration](https://quii.gitbook.io/learn-go-with-tests/go-fundamentals/iteration)
-- Code in this repo: `iteration.go`, `iteration_test.go`, `iteration_benchmark_test.go`
-- Stdlib: [`strings.Builder`](https://pkg.go.dev/strings#Builder), [`strings.Repeat`](https://pkg.go.dev/strings#Repeat), [`strings` package](https://golang.org/pkg/strings)
+> `for` does all looping. Tables make many cases cheap to test,
+> and benchmarks turn "I think it's faster" into numbers you can trust.
+>
+> Reference: Iteration book page, `strings.Builder`, `strings.Repeat`, code in this folder.
