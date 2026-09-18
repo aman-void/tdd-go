@@ -37,3 +37,7 @@ func Repeat(character string) string {
 	// so there is no need to manually manage a Builder or a loop here.
 	return strings.Repeat(character, repeatCount)
 }
+
+func CompareStrings(str1, str2 string) int {
+	return strings.Compare(str1, str2)
+}

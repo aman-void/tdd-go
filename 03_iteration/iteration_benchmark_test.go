@@ -58,3 +58,12 @@ func BenchmarkMapLookup(b *testing.B) {
 		_ = data["foo"]
 	}
 }
+
+func BenchmarkCompareStrings(b *testing.B) {
+	for b.Loop() {
+		CompareStrings("Hi", "Hi")
+		CompareStrings("peach", "watermelon")
+		CompareStrings("pomogranate", "grapes")
+
+	}
+}
