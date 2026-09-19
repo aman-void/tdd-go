@@ -38,4 +38,5 @@ go vet ./...
 - Examples: `func ExampleX()` + `// Output: ...` (without it, compile-only). Multiple examples need suffix: `ExampleIsEven_odd`.
 - Benchmarks use the new `for b.Loop()` API (Go 1.24+, repo uses go 1.27.1), not manual `b.N` loops. Quote the pattern in Powershell: `go test -bench="."`.
 - Helpers take `testing.TB` + call `t.Helper()` so failures point at the caller.
+- READMEs must stay portable: never hardcode host-specific system info (CPU model, `goos`/`goarch`, `cpu:` lines). Present benchmark numbers as illustrative `~X ns/op` with a "your numbers will vary, focus on relative order and `allocs/op`" note; strip machine identifiers from pasted output.
 - Final code favors idiomatic stdlib (`strings.Repeat`, `strings.Compare`, `strings.Builder`); `iteration.go` keeps the `+=` → `Builder` → `Repeat` journey in comments — preserve it.
